@@ -1,1 +1,457 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>پنل هوش مصنوعی کلود + تولید تصویر</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', 'Tahoma', 'Vazir', system-ui, sans-serif;
+            background: linear-gradient(135deg, #1a2a3a 0%, #0f1a24 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .app-container {
+            width: 1400px;
+            max-width: 98vw;
+            height: 90vh;
+            background: rgba(30, 30, 40, 0.85);
+            backdrop-filter: blur(12px);
+            border-radius: 32px;
+            box-shadow: 0 25px 45px rgba(0,0,0,0.3);
+            display: flex;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.15);
+        }
+        /* سایدبار برای ابزارها */
+        .sidebar {
+            width: 280px;
+            background: rgba(0,0,0,0.4);
+            backdrop-filter: blur(8px);
+            border-left: 1px solid rgba(255,255,255,0.1);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+        .sidebar h3 {
+            color: #ddd;
+            font-size: 1.1rem;
+            border-bottom: 1px solid #4a5b6e;
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+        }
+        .tool-card {
+            background: #2a3a48;
+            border-radius: 20px;
+            padding: 16px;
+            transition: 0.2s;
+        }
+        .image-gen-area textarea {
+            width: 100%;
+            background: #1e2a32;
+            border: 1px solid #3a4a5a;
+            border-radius: 16px;
+            padding: 12px;
+            color: white;
+            font-family: inherit;
+            resize: vertical;
+            margin-bottom: 12px;
+        }
+        button {
+            background: #5e7c9c;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 40px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+            font-family: inherit;
+        }
+        button:hover {
+            background: #3e6b9c;
+            transform: scale(1.02);
+        }
+        .generated-image {
+            margin-top: 15px;
+            text-align: center;
+        }
+        .generated-image img {
+            max-width: 100%;
+            border-radius: 16px;
+            border: 1px solid #6a8aaa;
+        }
+        /* منطقه چت اصلی */
+        .chat-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .chat-header {
+            padding: 20px;
+            background: rgba(0,0,0,0.3);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #f0f0f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .messages-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .message {
+            max-width: 80%;
+            padding: 12px 18px;
+            border-radius: 24px;
+            line-height: 1.5;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+        }
+        .user-message {
+            align-self: flex-end;
+            background: #3a6ea5;
+            color: white;
+            border-bottom-left-radius: 8px;
+        }
+        .assistant-message {
+            align-self: flex-start;
+            background: #2c3e44;
+            color: #f0f0f0;
+            border-bottom-right-radius: 8px;
+        }
+        .file-preview {
+            background: #1e2e3a;
+            border-radius: 20px;
+            padding: 6px 12px;
+            font-size: 0.8rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        .input-area {
+            padding: 16px 20px;
+            background: rgba(0,0,0,0.3);
+            border-top: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+        .input-wrapper {
+            flex: 1;
+            background: #1e2a32;
+            border-radius: 32px;
+            padding: 10px 18px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .input-wrapper input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: white;
+            font-size: 1rem;
+            outline: none;
+        }
+        .input-wrapper label {
+            cursor: pointer;
+            font-size: 1.4rem;
+        }
+        .send-btn {
+            background: #5e7c9c;
+            border-radius: 40px;
+            padding: 10px 20px;
+        }
+        .spinner {
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top: 2px solid white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 0.6s linear infinite;
+            display: inline-block;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .typing { display: flex; gap: 4px; align-items: center; }
+        .code-block { background: #0f1a1f; padding: 8px; border-radius: 12px; font-family: monospace; margin: 6px 0; overflow-x: auto; }
+        a { color: #aad0ff; }
+    </style>
+</head>
+<body>
+<div class="app-container">
+    <div class="sidebar">
+        <div class="tool-card image-gen-area">
+            <h3>🎨 تولید تصویر (DALL·E 3)</h3>
+            <textarea id="imgPrompt" rows="3" placeholder="توضیح تصویر مورد نظر..."></textarea>
+            <button id="genImageBtn">✨ تولید تصویر</button>
+            <div class="generated-image" id="imageResult"></div>
+        </div>
+        <div class="tool-card">
+            <h3>📎 آپلود فایل (PDF، عکس، Word)</h3>
+            <input type="file" id="fileInput" accept=".pdf,.jpg,.png,.jpeg,.docx,.txt">
+            <div id="fileStatus" style="font-size:0.8rem; margin-top:8px;"></div>
+            <button id="clearHistoryBtn" style="background:#6b4c4c; margin-top:20px;">🗑️ پاک کردن تاریخچه</button>
+        </div>
+    </div>
+    <div class="chat-main">
+        <div class="chat-header">
+            <span>🧠 Claude Opus + Files API</span>
+            <span style="font-size:0.8rem;">📁 آماده پردازش اسناد</span>
+        </div>
+        <div class="messages-area" id="messagesContainer">
+            <div class="message assistant-message">سلام! من کلود هستم. می‌توانید متن، فایل (PDF، عکس، داکیومنت) بفرستید یا از بخش کناری تصویر تولید کنید.</div>
+        </div>
+        <div class="input-area">
+            <div class="input-wrapper">
+                <input type="text" id="messageInput" placeholder="پیام خود را بنویسید یا فایلی آپلود کنید..." autofocus>
+                <label for="fileInputInline" style="font-size:1.3rem;">📎</label>
+                <input type="file" id="fileInputInline" style="display:none" accept=".pdf,.jpg,.jpeg,.png,.docx,.txt">
+            </div>
+            <button class="send-btn" id="sendBtn">📨 ارسال</button>
+        </div>
+    </div>
+</div>
 
+<script>
+    // ------------------------------------------------------------
+    // مدیریت وضعیت چت
+    // ------------------------------------------------------------
+    let conversationHistory = [];   // ذخیره به فرمت Anthropic (role, content)
+    let currentFileId = null;
+    let currentFileName = null;
+
+    const messagesDiv = document.getElementById('messagesContainer');
+    const msgInput = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const fileInput = document.getElementById('fileInput');
+    const fileInputInline = document.getElementById('fileInputInline');
+    const fileStatus = document.getElementById('fileStatus');
+    const genImageBtn = document.getElementById('genImageBtn');
+    const imgPrompt = document.getElementById('imgPrompt');
+    const imageResult = document.getElementById('imageResult');
+    const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+
+    // بارگذاری تاریخچه از localStorage
+    function loadHistory() {
+        const saved = localStorage.getItem('chat_history');
+        if (saved) {
+            try {
+                conversationHistory = JSON.parse(saved);
+                renderMessagesFromHistory();
+            } catch(e) { console.error(e); }
+        }
+    }
+
+    function saveHistory() {
+        localStorage.setItem('chat_history', JSON.stringify(conversationHistory));
+    }
+
+    function renderMessagesFromHistory() {
+        messagesDiv.innerHTML = '';
+        if (conversationHistory.length === 0) {
+            messagesDiv.innerHTML = '<div class="message assistant-message">تاریخچه خالی است. شروع به گفتگو کنید.</div>';
+            return;
+        }
+        for (let msg of conversationHistory) {
+            const div = document.createElement('div');
+            div.className = `message ${msg.role === 'user' ? 'user-message' : 'assistant-message'}`;
+            // اگر محتوا رشته‌ای باشد نمایش ساده، اگر آرایه باشد ترکیبی (فعلاً ساده می‌کنیم)
+            if (typeof msg.content === 'string') {
+                div.innerText = msg.content;
+            } else if (Array.isArray(msg.content)) {
+                let textParts = msg.content.filter(c => c.type === 'text').map(c => c.text).join('\n');
+                let fileInfo = msg.content.filter(c => c.type === 'document' || c.type === 'image').length > 0 ? ' [فایل ضمیمه] ' : '';
+                div.innerText = fileInfo + (textParts || '');
+            } else {
+                div.innerText = 'پیام غیر قابل نمایش';
+            }
+            messagesDiv.appendChild(div);
+        }
+        scrollToBottom();
+    }
+
+    function scrollToBottom() {
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    function addMessageToUI(role, contentText) {
+        const div = document.createElement('div');
+        div.className = `message ${role === 'user' ? 'user-message' : 'assistant-message'}`;
+        div.innerText = contentText;
+        messagesDiv.appendChild(div);
+        scrollToBottom();
+        // به تاریخچه اضافه کن
+        conversationHistory.push({ role: role, content: contentText });
+        saveHistory();
+    }
+
+    // نمایش لودینگ
+    function showTyping() {
+        const loader = document.createElement('div');
+        loader.className = 'message assistant-message typing';
+        loader.id = 'typingLoader';
+        loader.innerHTML = '<span class="spinner"></span><span style="margin-right:8px;">در حال فکر کردن...</span>';
+        messagesDiv.appendChild(loader);
+        scrollToBottom();
+    }
+    function hideTyping() {
+        const loader = document.getElementById('typingLoader');
+        if(loader) loader.remove();
+    }
+
+    // آپلود فایل و گرفتن file_id
+    async function uploadFile(file) {
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await fetch('/api/upload', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (data.success) {
+            return { file_id: data.file_id, filename: data.filename };
+        } else {
+            throw new Error(data.error);
+        }
+    }
+
+    // ارسال پیام به سرور
+    async function sendMessage(text, fileId = null, fileName = null) {
+        showTyping();
+        try {
+            const payload = {
+                text: text,
+                history: conversationHistory,
+                file_id: fileId,
+                filename: fileName
+            };
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await response.json();
+            hideTyping();
+            if (data.success) {
+                addMessageToUI('assistant', data.reply);
+                if (data.citations && data.citations.length) {
+                    console.log('استنادها:', data.citations);
+                }
+            } else {
+                addMessageToUI('assistant', `❌ خطا: ${data.error}`);
+            }
+        } catch (err) {
+            hideTyping();
+            addMessageToUI('assistant', `❌ خطای شبکه: ${err.message}`);
+        }
+    }
+
+    // هندلر ارسال (متن + فایل انتخابی)
+    async function handleSend() {
+        const text = msgInput.value.trim();
+        if (!text && !currentFileId) {
+            alert('لطفاً متن یا فایلی وارد کنید');
+            return;
+        }
+        // اگر فایل انتخاب شده، ابتدا پیام کاربر را با فایل نمایش دهیم
+        let fileIdToSend = currentFileId;
+        let fileNameToSend = currentFileName;
+        let displayText = text;
+        if (currentFileId) {
+            displayText = text ? `${text}\n[فایل: ${currentFileName}]` : `[فایل: ${currentFileName}]`;
+        }
+        addMessageToUI('user', displayText);
+        // ارسال به AI
+        await sendMessage(text || "لطفاً فایل ضمیمه شده را بررسی کنید", fileIdToSend, fileNameToSend);
+        // پاک کردن فایل جاری
+        currentFileId = null;
+        currentFileName = null;
+        fileStatus.innerText = '';
+        msgInput.value = '';
+        msgInput.focus();
+    }
+
+    // هندلر انتخاب فایل از هر دو مکان
+    async function onFileSelected(file) {
+        if (!file) return;
+        fileStatus.innerText = '⏫ در حال آپلود فایل...';
+        try {
+            const { file_id, filename } = await uploadFile(file);
+            currentFileId = file_id;
+            currentFileName = filename;
+            fileStatus.innerHTML = `✅ فایل "${filename}" با موفقیت آپلود شد. شناسه: ${file_id.slice(0,8)}...`;
+        } catch (err) {
+            fileStatus.innerText = `❌ خطا در آپلود: ${err.message}`;
+            currentFileId = null;
+        }
+    }
+
+    fileInput.addEventListener('change', (e) => onFileSelected(e.target.files[0]));
+    fileInputInline.addEventListener('change', (e) => onFileSelected(e.target.files[0]));
+
+    // تولید تصویر
+    genImageBtn.addEventListener('click', async () => {
+        const prompt = imgPrompt.value.trim();
+        if (!prompt) {
+            alert('لطفاً پرامپت تصویر را وارد کنید');
+            return;
+        }
+        genImageBtn.disabled = true;
+        genImageBtn.innerText = 'در حال تولید...';
+        imageResult.innerHTML = '<div class="spinner"></div>';
+        try {
+            const res = await fetch('/api/generate-image', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: prompt })
+            });
+            const data = await res.json();
+            if (data.success) {
+                imageResult.innerHTML = `<img src="${data.image_url}" alt="تولید شده توسط هوش مصنوعی" style="max-width:100%; border-radius:12px;">`;
+                // همچنین می‌توانیم پیامی در چت بفرستیم
+                addMessageToUI('assistant', `✨ تصویر ساخته شد: "${prompt}"\n<a href="${data.image_url}" target="_blank">🔗 مشاهده تصویر</a>`);
+            } else {
+                imageResult.innerHTML = `<span style="color:red;">خطا: ${data.error}</span>`;
+            }
+        } catch(err) {
+            imageResult.innerHTML = `<span style="color:red;">خطا: ${err.message}</span>`;
+        } finally {
+            genImageBtn.disabled = false;
+            genImageBtn.innerText = '✨ تولید تصویر';
+        }
+    });
+
+    clearHistoryBtn.addEventListener('click', () => {
+        conversationHistory = [];
+        saveHistory();
+        renderMessagesFromHistory();
+        messagesDiv.innerHTML = '<div class="message assistant-message">تاریخچه پاک شد. از حالا گفتگوی جدید.</div>';
+        currentFileId = null;
+        fileStatus.innerText = '';
+    });
+
+    sendBtn.addEventListener('click', handleSend);
+    msgInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') handleSend(); });
+
+    // نمایش تاریخچه ذخیره شده
+    loadHistory();
+    // اتصال فایل از آیکون کنار ورودی
+    document.querySelector('label[for="fileInputInline"]').addEventListener('click', () => fileInputInline.click());
+</script>
+</body>
+</html>
